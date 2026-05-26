@@ -1,0 +1,86 @@
+.global-search-modal {
+  width: 740px;
+  max-width: 92vw;
+}
+
+.global-search-modal .prompt-input {
+  font-size: 1.05em;
+}
+
+.gs-result {
+  padding: 6px 4px;
+}
+
+.gs-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.gs-title {
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.gs-path {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gs-recent-label {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 0.8em;
+  flex-shrink: 0;
+}
+
+.gs-snippet {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.85em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gs-title .suggestion-highlight,
+.gs-snippet .suggestion-highlight {
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
+/* Obsidian positions the prompt with `position: absolute; top: 80px`, so the
+   container's flex centering never reaches it. Override the prompt's own vertical
+   offset to center it (scoped to our modal; horizontal centering is left intact). */
+.modal-container .global-search-modal {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* One-time attention pulse on the opened match. The steady background persists
+   for "keep"/"timed" highlight modes; the pulse plays once and settles onto it. */
+.global-search-flash {
+  border-radius: 3px;
+  background-color: hsla(var(--color-accent-hsl), 0.28);
+  animation: global-search-flash-pulse 1.2s ease-out 1;
+}
+
+@keyframes global-search-flash-pulse {
+  0% {
+    background-color: hsla(var(--color-accent-hsl), 0.6);
+    box-shadow: 0 0 0 3px hsla(var(--color-accent-hsl), 0.5);
+  }
+  100% {
+    background-color: hsla(var(--color-accent-hsl), 0.28);
+    box-shadow: 0 0 0 0 hsla(var(--color-accent-hsl), 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .global-search-flash {
+    animation: none;
+  }
+}

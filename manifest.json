@@ -1,0 +1,10 @@
+{
+  "id": "global-search",
+  "name": "Global Search",
+  "version": "1.0.0",
+  "minAppVersion": "1.4.0",
+  "description": "Search titles, headings, and content across your whole vault — jump to any match and watch it light up.",
+  "author": "Maksim Radaev (@vflame6)",
+  "authorUrl": "https://github.com/vflame6",
+  "isDesktopOnly": false
+}

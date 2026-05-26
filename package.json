@@ -1,0 +1,21 @@
+{
+  "name": "global-search",
+  "version": "1.0.0",
+  "description": "Search titles, headings, and content across your whole vault, with jump-to-match and an animated highlight.",
+  "main": "main.js",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
+    "test": "node --test src/search.test.ts",
+    "typecheck": "tsc --noEmit --skipLibCheck"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.20.0",
+    "obsidian": "latest",
+    "typescript": "^5.4.0"
+  }
+}
