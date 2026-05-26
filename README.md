@@ -2,8 +2,7 @@
 
 A command-bar style global search for Obsidian. Press a shortcut, search across note titles, headings, and content, then jump straight to the match — which lights up so you can spot it instantly.
 
-<!-- Replace docs/demo.svg with a real screenshot or GIF of the plugin in action. -->
-![Global Search](docs/demo.svg)
+![Global Search](docs/demo.png)
 
 ## Features
 

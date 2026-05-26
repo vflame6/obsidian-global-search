@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420" role="img" aria-label="Global Search demo placeholder">
-  <rect width="900" height="420" rx="14" fill="#1e1e1e"/>
-  <rect x="150" y="120" width="600" height="56" rx="10" fill="#2a2a2a" stroke="#3d3d3d"/>
-  <circle cx="182" cy="148" r="9" fill="none" stroke="#7c7c7c" stroke-width="3"/>
-  <line x1="189" y1="155" x2="198" y2="164" stroke="#7c7c7c" stroke-width="3" stroke-linecap="round"/>
-  <text x="216" y="155" font-family="-apple-system, Segoe UI, sans-serif" font-size="20" fill="#9a9a9a">Search your vault…</text>
-  <text x="450" y="250" text-anchor="middle" font-family="-apple-system, Segoe UI, sans-serif" font-size="22" fill="#cfcfcf">Global Search</text>
-  <text x="450" y="284" text-anchor="middle" font-family="-apple-system, Segoe UI, sans-serif" font-size="15" fill="#7c7c7c">Demo coming soon — replace docs/demo.svg with a real screenshot or GIF.</text>
-</svg>
