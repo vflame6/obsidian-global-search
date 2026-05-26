@@ -15,6 +15,7 @@ import { StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView, type DecorationSet } from "@codemirror/view";
 import {
   buildSnippet,
+  compareHits,
   enabledFields,
   headingPrefixLength,
   offsetToLineCh,
@@ -373,7 +374,7 @@ async function buildResults(
     });
   }
 
-  hits.sort((a, b) => b.score - a.score);
+  hits.sort(compareHits);
   return hits.slice(0, 50);
 }
 

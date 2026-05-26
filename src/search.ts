@@ -138,3 +138,19 @@ export function enabledFields(scope: SearchScope): {
     content: s === "content" || s === "both",
   };
 }
+
+// Sort comparator for search hits: results whose filename (title) matched the
+// query rank above results that only matched a heading or content, so filename
+// matches always come first. Keyed on `titleMatches` presence (not the chosen
+// matchType) so a file that matches both its title and its content still lands
+// in the filename group. Within a group, the higher score sorts first. Use with
+// Array.prototype.sort.
+export function compareHits(
+  a: { titleMatches: SearchMatches | null; score: number },
+  b: { titleMatches: SearchMatches | null; score: number },
+): number {
+  const aGroup = a.titleMatches != null ? 0 : 1;
+  const bGroup = b.titleMatches != null ? 0 : 1;
+  if (aGroup !== bGroup) return aGroup - bGroup;
+  return b.score - a.score;
+}

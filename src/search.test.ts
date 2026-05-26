@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { relativeTimeLabel, offsetToLineCh, buildSnippet, rankFields, headingPrefixLength, enabledFields, type SearchScope } from "./search.ts";
+import { relativeTimeLabel, offsetToLineCh, buildSnippet, rankFields, headingPrefixLength, enabledFields, compareHits, type SearchScope } from "./search.ts";
 
 // Local-time constructor so the test is timezone-agnostic.
 const at = (y: number, mo: number, d: number, h = 12): number =>
@@ -157,4 +157,32 @@ test("enabledFields: unknown scope falls back to both", () => {
     heading: true,
     content: true,
   });
+});
+
+test("compareHits: a filename (title) match ranks before a content-only match", () => {
+  const titleHit = { titleMatches: [], score: 1 }; // weak filename match
+  const contentHit = { titleMatches: null, score: 100 }; // strong content-only match
+  assert.ok(compareHits(titleHit, contentHit) < 0); // titleHit sorts first
+  assert.ok(compareHits(contentHit, titleHit) > 0);
+});
+
+test("compareHits: within the same group, higher score sorts first", () => {
+  const a = { titleMatches: null, score: 5 };
+  const b = { titleMatches: null, score: 10 };
+  assert.ok(compareHits(a, b) > 0); // b (higher score) first
+  assert.ok(compareHits(b, a) < 0);
+});
+
+test("compareHits: sorting a mixed list puts all filename matches first, each group by score", () => {
+  const hits = [
+    { titleMatches: null, score: 100 }, // content, strong
+    { titleMatches: [], score: 2 }, // filename, weak
+    { titleMatches: null, score: 50 }, // content
+    { titleMatches: [], score: 9 }, // filename, strong
+  ];
+  hits.sort(compareHits);
+  assert.deepEqual(
+    hits.map((h) => h.score),
+    [9, 2, 100, 50], // filename group (9, 2) first, then content group (100, 50)
+  );
 });
