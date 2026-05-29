@@ -1,6 +1,6 @@
 {
   "name": "global-search",
-  "version": "1.0.0",
+  "version": "0.0.0-dev",
   "description": "Search titles, headings, and content across your whole vault, with jump-to-match and an animated highlight.",
   "main": "main.js",
   "engines": { "node": ">=22" },

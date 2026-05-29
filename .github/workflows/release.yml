@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need main branch ref to update versions.json there
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -21,8 +23,54 @@ jobs:
           node-version: "22"
           cache: npm
 
+      - name: Compute version from tag
+        id: ver
+        run: |
+          # Tag is the source of truth; strip the leading "v" if present.
+          VERSION="${GITHUB_REF_NAME#v}"
+          # minAppVersion stays in the committed manifest.json — bump it manually
+          # when a release needs a newer Obsidian.
+          MIN_APP=$(jq -r .minAppVersion manifest.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "min_app=$MIN_APP" >> "$GITHUB_OUTPUT"
+          echo "Releasing as $VERSION (minAppVersion $MIN_APP)"
+
+      - name: Record version in versions.json on main
+        # Push first so the community-plugins store, which reads versions.json
+        # from the default branch, sees the new version → minAppVersion mapping
+        # by the time the release is published. If this fails (e.g. main is
+        # protected), the workflow stops before publishing a release whose
+        # versions.json entry is missing.
+        run: |
+          git fetch origin main
+          git switch -c main-update origin/main
+          jq --arg v "${{ steps.ver.outputs.version }}" \
+             --arg m "${{ steps.ver.outputs.min_app }}" \
+             '. + { ($v): $m }' versions.json > versions.tmp
+          mv versions.tmp versions.json
+          if git diff --quiet versions.json; then
+            echo "versions.json already records ${{ steps.ver.outputs.version }}"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add versions.json
+            git commit -m "chore: record ${{ steps.ver.outputs.version }} in versions.json"
+            git push origin main-update:main
+          fi
+          # Return to the tagged commit so the build below uses tag content.
+          git switch --detach "${{ github.sha }}"
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Stamp manifest.json with the tag version
+        # The committed manifest.json carries a "0.0.0-dev" placeholder; release
+        # artifacts (loose manifest.json and the one inside the zip) get the
+        # real version. This is not committed back — main keeps "0.0.0-dev".
+        run: |
+          jq --arg v "${{ steps.ver.outputs.version }}" '.version = $v' manifest.json > manifest.tmp
+          mv manifest.tmp manifest.json
+          cat manifest.json
 
       - name: Build
         run: npm run build

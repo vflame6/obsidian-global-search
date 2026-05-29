@@ -61,8 +61,6 @@ npm run build   # typecheck + production build
 npm run test    # run the unit tests
 ```
 
-To cut a release, bump `version` in `manifest.json` (and update `versions.json` if `minAppVersion` changed), then push a tag like `v1.0.0` — the release workflow builds and publishes the assets.
-
 ## License
 
 [MIT](LICENSE) © Maksim Radaev
