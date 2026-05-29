@@ -51,6 +51,7 @@ You can also install via the [BRAT](https://github.com/TfTHacker/obsidian42-brat
 | Show matched content | on / off | on | Show the matched heading/line snippet. |
 | Highlight on open | Keep highlight / Remove after 5 seconds / Don't highlight | Keep highlight | How the match is highlighted after you jump to it. |
 | Open results in a new tab | on / off | off | Open in a new tab instead of the current one. |
+| &nbsp;&nbsp;↳ Focus new tab | on / off | off | When opening in a new tab, switch focus to it instead of leaving it in the background. |
 
 ## Development
 

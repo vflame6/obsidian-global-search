@@ -60,6 +60,7 @@ interface GlobalSearchSettings {
   showSnippet: boolean; // show the matched heading/line snippet
   highlightMode: "keep" | "timed" | "off"; // highlight persistence after opening
   openInNewTab: boolean; // open results in a new tab vs. the current one
+  focusNewTab: boolean; // when openInNewTab is on, focus the new tab on open
 }
 
 const DEFAULT_SETTINGS: GlobalSearchSettings = {
@@ -69,6 +70,7 @@ const DEFAULT_SETTINGS: GlobalSearchSettings = {
   showSnippet: true,
   highlightMode: "keep", // highlight and leave it until the next open
   openInNewTab: false,
+  focusNewTab: false, // preserve prior behavior — new tab opens in background
 };
 
 export default class GlobalSearchPlugin extends Plugin {
@@ -232,14 +234,19 @@ class GlobalSearchModal extends SuggestModal<SearchHit> {
   }
 
   private async openHit(hit: SearchHit): Promise<void> {
-    const leaf = this.app.workspace.getLeaf(
-      this.plugin.settings.openInNewTab ? "tab" : false,
-    );
+    const { openInNewTab, focusNewTab } = this.plugin.settings;
+    const leaf = this.app.workspace.getLeaf(openInNewTab ? "tab" : false);
     // Open WITHOUT eState: passing { line } makes Obsidian apply its own yellow
     // "is-flashing" navigation highlight (--text-highlight-bg), a separate system
     // that conflicts with and outlives our configurable highlight. We scroll and
     // highlight the match ourselves below, so our decoration is the only highlight.
     await leaf.openFile(hit.file);
+    // After openFile (a microtask boundary) the modal has closed and focus is
+    // back on the previously-active leaf, so the new tab sits in the background.
+    // When the user opted in, explicitly hand active+focus to the new leaf.
+    if (openInNewTab && focusNewTab) {
+      this.app.workspace.setActiveLeaf(leaf, { focus: true });
+    }
 
     if (hit.navLine != null && leaf.view instanceof MarkdownView) {
       const editor = leaf.view.editor;
@@ -508,7 +515,25 @@ class GlobalSearchSettingTab extends PluginSettingTab {
         t.setValue(s.openInNewTab).onChange(async (v) => {
           s.openInNewTab = v;
           await this.plugin.saveSettings();
+          // Re-render so the "Focus new tab" sub-option appears/disappears
+          // with its parent.
+          this.display();
         }),
       );
+
+    if (s.openInNewTab) {
+      new Setting(containerEl)
+        .setName("Focus new tab")
+        .setDesc(
+          "Switch focus to the new tab when it opens. When off, the new tab opens in the background and the current tab stays focused.",
+        )
+        .addToggle((t) =>
+          t.setValue(s.focusNewTab).onChange(async (v) => {
+            s.focusNewTab = v;
+            await this.plugin.saveSettings();
+          }),
+        )
+        .settingEl.addClass("global-search-sub-setting");
+    }
   }
 }

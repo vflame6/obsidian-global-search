@@ -84,3 +84,10 @@
     animation: none;
   }
 }
+
+/* Sub-options under a parent toggle — indented and borderless so they read
+   as nested under the parent setting row. */
+.global-search-sub-setting {
+  padding-left: 24px;
+  border-top: none;
+}
