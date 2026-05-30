@@ -53,12 +53,25 @@ const highlightField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
+// Line number (CM6 1-based) of the active highlight in `view`, or null if there
+// is none. Reads from the StateField (not a cached value) so it stays correct
+// after intervening text edits shift the decoration via deco.map(tr.changes).
+function highlightedLineOf(view: EditorView): number | null {
+  const decos = view.state.field(highlightField, false);
+  if (!decos) return null;
+  let line: number | null = null;
+  decos.between(0, view.state.doc.length, (from) => {
+    line = view.state.doc.lineAt(from).number;
+  });
+  return line;
+}
+
 interface GlobalSearchSettings {
   searchScope: SearchScope; // which parts of a note to match
   showFilename: boolean; // show the note name in a result row
   showPath: boolean; // show the folder path in a result row
   showSnippet: boolean; // show the matched heading/line snippet
-  highlightMode: "keep" | "timed" | "off"; // highlight persistence after opening
+  highlightMode: "keep" | "timed" | "off" | "until-line-leaves"; // highlight persistence after opening
   openInNewTab: boolean; // open results in a new tab vs. the current one
   focusNewTab: boolean; // when openInNewTab is on, focus the new tab on open
 }
@@ -68,7 +81,7 @@ const DEFAULT_SETTINGS: GlobalSearchSettings = {
   showFilename: true,
   showPath: true,
   showSnippet: true,
-  highlightMode: "keep", // highlight and leave it until the next open
+  highlightMode: "until-line-leaves", // clear when the cursor leaves the matched line or the user switches tab
   openInNewTab: false,
   focusNewTab: false, // preserve prior behavior — new tab opens in background
 };
@@ -81,7 +94,43 @@ export default class GlobalSearchPlugin extends Plugin {
   async onload(): Promise<void> {
     await this.loadSettings();
 
-    this.registerEditorExtension(highlightField);
+    this.registerEditorExtension([
+      highlightField,
+      // "until-line-leaves" mode: when the cursor lands on a different line than
+      // the highlighted one, clear the highlight. Reads the highlight line from
+      // the StateField on each fire so it stays correct after text edits move
+      // the decoration.
+      EditorView.updateListener.of((update) => {
+        if (this.settings.highlightMode !== "until-line-leaves") return;
+        if (update.view !== this.lastHighlightedView) return;
+        if (!update.selectionSet) return;
+        const highlightLine = highlightedLineOf(update.view);
+        if (highlightLine === null) return;
+        const cursorLine = update.state.doc.lineAt(
+          update.state.selection.main.head,
+        ).number;
+        if (cursorLine !== highlightLine) {
+          this.clearActiveHighlight();
+        }
+      }),
+    ]);
+
+    // Tab/file switches don't fire the cursor-move listener above (the cursor
+    // in the highlighted view stays put), so handle "switched away from the
+    // highlighted leaf" here.
+    this.registerEvent(
+      this.app.workspace.on("active-leaf-change", (leaf) => {
+        if (this.settings.highlightMode !== "until-line-leaves") return;
+        if (this.lastHighlightedView === null) return;
+        let activeCm: EditorView | undefined;
+        if (leaf?.view instanceof MarkdownView) {
+          activeCm = (leaf.view.editor as unknown as { cm?: EditorView }).cm;
+        }
+        if (activeCm !== this.lastHighlightedView) {
+          this.clearActiveHighlight();
+        }
+      }),
+    );
 
     this.addCommand({
       id: "open-global-search",
@@ -94,11 +143,7 @@ export default class GlobalSearchPlugin extends Plugin {
   }
 
   onunload(): void {
-    if (this.clearHighlightTimer !== null) {
-      window.clearTimeout(this.clearHighlightTimer);
-      this.clearHighlightTimer = null;
-    }
-    this.lastHighlightedView = null;
+    this.clearActiveHighlight();
   }
 
   async loadSettings(): Promise<void> {
@@ -110,31 +155,43 @@ export default class GlobalSearchPlugin extends Plugin {
   }
 
   // Apply (or clear) the match highlight in a specific editor view, per the
-  // configured highlightMode. "off" clears; "keep" leaves it until the next open;
-  // "timed" clears it after 5 seconds. Any highlight left in a previously-opened
-  // view is cleared first, so a new open never strands a highlight in another tab.
+  // configured highlightMode. "off" never highlights; "keep" leaves it until
+  // the next open; "timed" clears it after 5 seconds; "until-line-leaves" is
+  // cleared by the listeners in onload() when the cursor moves off the line or
+  // the user switches tabs. Any highlight left in a previously-opened view is
+  // cleared first, so a new open never strands a highlight in another tab.
   highlightRange(view: EditorView, from: number, to: number): void {
+    this.clearActiveHighlight();
+
+    if (this.settings.highlightMode === "off") {
+      // Belt-and-suspenders: in case `view` carries a stale highlight that
+      // clearActiveHighlight doesn't know about (e.g. across plugin reloads),
+      // explicitly clear it on the target view too.
+      this.dispatchHighlight(view, null);
+      return;
+    }
+
+    this.dispatchHighlight(view, { from, to });
+    this.lastHighlightedView = view;
+
+    if (this.settings.highlightMode === "timed") {
+      this.clearHighlightTimer = window.setTimeout(() => {
+        this.clearActiveHighlight();
+      }, 5000);
+    }
+  }
+
+  // Centralized highlight teardown: cancel any pending timer, dispatch a clear
+  // on the view that currently has the highlight, and forget the bookkeeping.
+  // Safe to call when nothing is active.
+  private clearActiveHighlight(): void {
     if (this.clearHighlightTimer !== null) {
       window.clearTimeout(this.clearHighlightTimer);
       this.clearHighlightTimer = null;
     }
-    if (this.lastHighlightedView && this.lastHighlightedView !== view) {
+    if (this.lastHighlightedView !== null) {
       this.dispatchHighlight(this.lastHighlightedView, null);
-    }
-    this.lastHighlightedView = null;
-
-    if (this.settings.highlightMode === "off") {
-      this.dispatchHighlight(view, null);
-      return;
-    }
-    this.dispatchHighlight(view, { from, to });
-    this.lastHighlightedView = view;
-    if (this.settings.highlightMode === "timed") {
-      this.clearHighlightTimer = window.setTimeout(() => {
-        this.dispatchHighlight(view, null);
-        this.clearHighlightTimer = null;
-        this.lastHighlightedView = null;
-      }, 5000);
+      this.lastHighlightedView = null;
     }
   }
 
@@ -497,6 +554,7 @@ class GlobalSearchSettingTab extends PluginSettingTab {
       .addDropdown((dd) =>
         dd
           .addOption("keep", "Keep highlight")
+          .addOption("until-line-leaves", "Until you move off the line")
           .addOption("timed", "Remove after 5 seconds")
           .addOption("off", "Don't highlight")
           .setValue(s.highlightMode)
